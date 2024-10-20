@@ -162,7 +162,7 @@ class Bot(DawnExtensionAPI):
             if not db_account_data or not db_account_data.headers:
                 # if not await self.login_new_account():
                     # return
-                pass
+                return
 
             elif not await self.handle_existing_account(db_account_data):
                 return
