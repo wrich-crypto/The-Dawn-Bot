@@ -158,10 +158,12 @@ class Bot(DawnExtensionAPI):
             if db_account_data and db_account_data.session_blocked_until:
                 if await self.handle_sleep(db_account_data.session_blocked_until):
                     return
+                
+            if not db_account_data:
+                if not await self.login_new_account():
+                    return
 
             if not db_account_data or not db_account_data.headers:
-                # if not await self.login_new_account():
-                    # return
                 return
 
             elif not await self.handle_existing_account(db_account_data):
@@ -270,6 +272,10 @@ class Bot(DawnExtensionAPI):
         task_id = None
 
         try:
+            await Accounts.create_account(
+                email=self.account_data.email
+            )
+
             logger.info(f"Account: {self.account_data.email} | Logging in...")
             puzzle_id, answer, task_id = await self.get_captcha_data()
 
