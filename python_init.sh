@@ -37,3 +37,6 @@ cd ..
 rm -rf Python-3.10.15 Python-3.10.15.tgz
 
 echo "Python 3.10.15 和 pip 安装完成，环境变量已设置。"
+
+pip3.10 install -r requirements.txt
+echo "Python 3.10.15 和 pip 安装完成，依赖安装完成。"
