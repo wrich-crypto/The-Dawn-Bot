@@ -262,7 +262,7 @@ class Bot(DawnExtensionAPI):
             )
 
     async def login_new_account(self):
-        if self.login_attempts >= 10:
+        if self.login_attempts >= 2:
             logger.error(f"Account: {self.account_data.email} | Failed to login after 10 attempts, skipping...")
             return False
         
@@ -306,14 +306,20 @@ class Bot(DawnExtensionAPI):
             sleep_until = self.get_sleep_until()
             await Accounts.set_sleep_until(self.account_data.email, sleep_until)
             logger.error(
-                f"Account: {self.account_data.email} | Failed to solve captcha after 5 attempts, sleeping..."
+                f"Account: {self.account_data.email} | 验证码解决失败,尝试次数 {self.login_attempts}/10"
             )
             return False
-
         except Exception as error:
             self.login_attempts += 1
+            error_message = str(error)
+            if "Email not verified" in error_message:
+                logger.error(
+                    f"Account: {self.account_data.email} | 登录失败: 邮箱未验证,请检查垃圾邮件文件夹"
+                )
+                self.login_attempts = 10
+                return False  # 直接返回,不需要等待
             logger.error(
-                f"Account: {self.account_data.email} | Failed to login: {error}"
+                f"Account: {self.account_data.email} | 登录失败: {error_message}, 尝试次数 {self.login_attempts}/10"
             )
             return False
 
