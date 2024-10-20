@@ -18,6 +18,7 @@ class DawnExtensionAPI:
         self.account_data = account
         self.wallet_data: dict[str, Any] = {}
         self.session = self.setup_session()
+        self.login_attempts = 0
 
     def setup_session(self) -> AsyncSession:
         session = AsyncSession(impersonate="chrome124", verify=False)

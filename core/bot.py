@@ -262,6 +262,10 @@ class Bot(DawnExtensionAPI):
             )
 
     async def login_new_account(self):
+        if self.login_attempts >= 10:
+            logger.error(f"Account: {self.account_data.email} | Failed to login after 10 attempts, skipping...")
+            return False
+        
         task_id = None
 
         try:
@@ -274,9 +278,11 @@ class Bot(DawnExtensionAPI):
             await Accounts.create_account(
                 email=self.account_data.email, headers=self.session.headers
             )
+            self.login_attempts = 0  # 登录成功,重置尝试次数
             return True
 
         except APIError as error:
+            self.login_attempts += 1
             if error.error_message in error.BASE_MESSAGES:
                 if error.error_message == "Incorrect answer. Try again!":
                     logger.warning(
@@ -296,6 +302,7 @@ class Bot(DawnExtensionAPI):
             return False
 
         except CaptchaSolvingFailed:
+            self.login_attempts += 1
             sleep_until = self.get_sleep_until()
             await Accounts.set_sleep_until(self.account_data.email, sleep_until)
             logger.error(
@@ -304,6 +311,7 @@ class Bot(DawnExtensionAPI):
             return False
 
         except Exception as error:
+            self.login_attempts += 1
             logger.error(
                 f"Account: {self.account_data.email} | Failed to login: {error}"
             )
