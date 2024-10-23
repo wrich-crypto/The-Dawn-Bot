@@ -333,6 +333,9 @@ class Bot(DawnExtensionAPI):
             db_account_data.sleep_until
         ):
             return False
+        
+        if "error" in self.session.headers and self.session.headers["error"] == True:
+                return False
 
         self.session.headers = db_account_data.headers
         if not await self.verify_session():
