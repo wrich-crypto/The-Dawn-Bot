@@ -164,9 +164,11 @@ class Bot(DawnExtensionAPI):
                     return
 
             if not db_account_data or not db_account_data.headers:
+                logger.debug(f'db_account_data.headers is null')
                 return
 
             elif not await self.handle_existing_account(db_account_data):
+                logger.debug(f'handle_existing_account(db_account_data) error')
                 return
 
             await self.perform_farming_actions()
