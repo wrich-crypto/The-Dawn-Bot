@@ -363,6 +363,7 @@ class Bot(DawnExtensionAPI):
             return await self.process_farming()
 
         logger.info(f"Account: {self.account_data.email} | Using existing session")
+        await Accounts.set_login_attempts( email=self.account_data.email, attempts=0)
         return True
 
     async def handle_session_blocked(self):
