@@ -297,6 +297,8 @@ class Bot(DawnExtensionAPI):
             await Accounts.create_account(
                 email=self.account_data.email, headers=self.session.headers
             )
+
+            await Accounts.set_login_attempts( email=self.account_data.email, attempts=0)
             return True
 
         except APIError as error:
