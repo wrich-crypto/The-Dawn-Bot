@@ -275,7 +275,7 @@ class Bot(DawnExtensionAPI):
         task_id = None
         await Accounts.increment_login_attempts(email=self.account_data.email)
 
-        if await Accounts.get_registered_status(email=self.account_data.email):
+        if await Accounts.get_registered_status(email=self.account_data.email) is False:
             logger.error(f'{self.account_data.email} 用户没有注册')
             return False
 
