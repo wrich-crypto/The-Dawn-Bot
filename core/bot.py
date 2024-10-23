@@ -59,9 +59,6 @@ class Bot(DawnExtensionAPI):
         raise CaptchaSolvingFailed("5次尝试后仍未能解决验证码")
 
     async def clear_account_and_session(self) -> None:
-        if "error" in self.session.headers and self.session.headers["error"] == True:
-                return
-        
         if await Accounts.get_account(email=self.account_data.email):
             await Accounts.delete_account(email=self.account_data.email)
         self.session = self.setup_session()
@@ -350,10 +347,6 @@ class Bot(DawnExtensionAPI):
             db_account_data.sleep_until
         ):
             return False
-        
-        if "error" in self.session.headers and self.session.headers["error"] == True:
-                logger.error(f'Account: {self.account_data.email} | self.session.headers:{self.session.headers} not login')
-                return False
 
         self.session.headers = db_account_data.headers
         if not await self.verify_session():

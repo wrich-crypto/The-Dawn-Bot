@@ -281,9 +281,6 @@ class DawnExtensionAPI:
 
     async def verify_session(self) -> bool:
         try:
-            if "error" in self.session.headers and self.session.headers["error"] == True:
-                return False
-
             await self.user_info()
             return True
 
