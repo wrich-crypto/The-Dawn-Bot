@@ -270,6 +270,7 @@ class Bot(DawnExtensionAPI):
         task_id = None
         
         if "error" in self.session.headers and self.session.headers["error"] == True:
+                logger.error(f'Account: {self.account_data.email} | self.session.headers:{self.session.headers} not login')
                 return False
 
         try:
@@ -339,6 +340,7 @@ class Bot(DawnExtensionAPI):
             return False
         
         if "error" in self.session.headers and self.session.headers["error"] == True:
+                logger.error(f'Account: {self.account_data.email} | self.session.headers:{self.session.headers} not login')
                 return False
 
         self.session.headers = db_account_data.headers
