@@ -51,6 +51,9 @@ class Bot(DawnExtensionAPI):
         raise CaptchaSolvingFailed("Failed to solve captcha after 5 attempts")
 
     async def clear_account_and_session(self) -> None:
+        if "error" in self.session.headers and self.session.headers["error"] == True:
+                return
+        
         if await Accounts.get_account(email=self.account_data.email):
             await Accounts.delete_account(email=self.account_data.email)
         self.session = self.setup_session()
@@ -158,17 +161,14 @@ class Bot(DawnExtensionAPI):
             if db_account_data and db_account_data.session_blocked_until:
                 if await self.handle_sleep(db_account_data.session_blocked_until):
                     return
-                
-            if not db_account_data:
-                if not await self.login_new_account():
-                    return
 
             if not db_account_data or not db_account_data.headers:
                 logger.debug(f'db_account_data.headers is null')
-                return
+                if not await self.login_new_account():
+                    return
 
             elif not await self.handle_existing_account(db_account_data):
-                logger.debug(f'handle_existing_account(db_account_data) error')
+                logger.debug(f'handle_existing_account(db_account_data)')
                 return
 
             await self.perform_farming_actions()
@@ -267,10 +267,6 @@ class Bot(DawnExtensionAPI):
             )
 
     async def login_new_account(self):
-        if self.login_attempts >= 2:
-            logger.error(f"Account: {self.account_data.email} | Failed to login after 10 attempts, skipping...")
-            return False
-        
         task_id = None
 
         try:
@@ -287,11 +283,9 @@ class Bot(DawnExtensionAPI):
             await Accounts.create_account(
                 email=self.account_data.email, headers=self.session.headers
             )
-            self.login_attempts = 0  # 登录成功,重置尝试次数
             return True
 
         except APIError as error:
-            self.login_attempts += 1
             if error.error_message in error.BASE_MESSAGES:
                 if error.error_message == "Incorrect answer. Try again!":
                     logger.warning(
@@ -311,7 +305,6 @@ class Bot(DawnExtensionAPI):
             return False
 
         except CaptchaSolvingFailed:
-            self.login_attempts += 1
             sleep_until = self.get_sleep_until()
             await Accounts.set_sleep_until(self.account_data.email, sleep_until)
             logger.error(
@@ -319,13 +312,16 @@ class Bot(DawnExtensionAPI):
             )
             return False
         except Exception as error:
-            self.login_attempts += 1
             error_message = str(error)
+
+            await Accounts.create_account(
+                email=self.account_data.email, headers={"error": True}
+            )
+            
             if "Email not verified" in error_message:
                 logger.error(
                     f"Account: {self.account_data.email} | 登录失败: 邮箱未验证,请检查垃圾邮件文件夹"
                 )
-                self.login_attempts = 10
                 return False  # 直接返回,不需要等待
             logger.error(
                 f"Account: {self.account_data.email} | 登录失败: {error_message}, 尝试次数 {self.login_attempts}/10"

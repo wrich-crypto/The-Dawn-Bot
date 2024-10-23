@@ -238,6 +238,8 @@ class DawnExtensionAPI:
 
     async def user_info(self) -> dict:
         headers = self.session.headers.copy()
+
+
         headers["authorization"] = f'Berear {self.session.headers["Berear"]}'
         headers["content-type"] = "application/json"
         del headers["Berear"]
@@ -279,6 +281,9 @@ class DawnExtensionAPI:
 
     async def verify_session(self) -> bool:
         try:
+            if "error" in self.session.headers and self.session.headers["error"] == True:
+                return False
+
             await self.user_info()
             return True
 
