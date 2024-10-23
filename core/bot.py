@@ -268,6 +268,9 @@ class Bot(DawnExtensionAPI):
 
     async def login_new_account(self):
         task_id = None
+        
+        if "error" in self.session.headers and self.session.headers["error"] == True:
+                return False
 
         try:
             await Accounts.create_account(
