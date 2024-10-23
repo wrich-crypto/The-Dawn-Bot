@@ -25,21 +25,29 @@ async def run_module_safe(
     async with semaphore:
         bot = Bot(account)
         try:
+            # 检查是否需要延迟启动
             if config.delay_before_start.min > 0:
+                # 对于farming操作且账户未进行过初始延迟的情况
                 if process_func == process_farming and account.email not in accounts_with_initial_delay:
+                    # 生成随机延迟时间
                     random_delay = random.randint(config.delay_before_start.min, config.delay_before_start.max)
-                    logger.info(f"Account: {account.email} | Initial farming delay: {random_delay} sec")
+                    logger.info(f"账户: {account.email} | 初始farming延迟: {random_delay} 秒")
                     await asyncio.sleep(random_delay)
+                    # 将账户添加到已进行初始延迟的集合中
                     accounts_with_initial_delay.add(account.email)
 
+                # 对于非farming操作的情况
                 elif process_func != process_farming:
+                    # 生成随机延迟时间
                     random_delay = random.randint(config.delay_before_start.min, config.delay_before_start.max)
-                    logger.info(f"Account: {account.email} | Sleep for {random_delay} sec")
+                    logger.info(f"账户: {account.email} | 休眠 {random_delay} 秒")
                     await asyncio.sleep(random_delay)
 
+            # 执行指定的处理函数
             result = await process_func(bot)
             return result
         finally:
+            # 确保在函数结束时关闭bot会话
             await bot.close_session()
 
 
@@ -65,14 +73,19 @@ async def process_complete_tasks(bot: Bot) -> None:
 async def run_module(
         accounts: List[Account], process_func: Callable[[Bot], Coroutine[Any, Any, Any]]
 ) -> tuple[Any]:
+    # 创建一个任务列表,每个任务对应一个账户的处理
     tasks = [run_module_safe(account, process_func) for account in accounts]
+    # 并发执行所有任务并等待结果
     return await asyncio.gather(*tasks)
 
 
 async def farm_continuously(accounts: List[Account]) -> None:
     while True:
+        # 随机打乱账户列表顺序
         random.shuffle(accounts)
+        # 对所有账户执行farming操作
         await run_module(accounts, process_farming)
+        # 等待10秒后继续下一轮
         await asyncio.sleep(10)
 
 

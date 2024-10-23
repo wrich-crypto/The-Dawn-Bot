@@ -10,26 +10,29 @@ from .api import DawnExtensionAPI
 from utils import check_email_for_link, check_if_email_valid
 from database import Accounts
 from .exceptions.base import APIError, SessionRateLimited, CaptchaSolvingFailed
-
+import asyncio
 
 class Bot(DawnExtensionAPI):
     def __init__(self, account: Account):
         super().__init__(account)
 
     async def get_captcha_data(self) -> Tuple[str, Any, Optional[Any]]:
-        for _ in range(5):
+        retry_count = 0
+        wait_time = 1  # 初始等待时间为1秒
+
+        while retry_count < 5:
             try:
                 puzzle_id = await self.get_puzzle_id()
                 image = await self.get_puzzle_image(puzzle_id)
 
                 logger.info(
-                    f"Account: {self.account_data.email} | Got puzzle image, solving..."
+                    f"账户: {self.account_data.email} | 获取到拼图图片,正在解决..."
                 )
                 answer, solved, *rest = await self.solve_puzzle(image)
 
                 if solved and len(answer) == 6:
                     logger.success(
-                        f"Account: {self.account_data.email} | Puzzle solved: {answer}"
+                        f"账户: {self.account_data.email} | 拼图已解决: {answer}"
                     )
                     return puzzle_id, answer, rest[0] if rest else None
 
@@ -37,7 +40,7 @@ class Bot(DawnExtensionAPI):
                     await self.report_invalid_puzzle(rest[0])
 
                 logger.error(
-                    f"Account: {self.account_data.email} | Failed to solve puzzle: Incorrect answer | Retrying..."
+                    f"账户: {self.account_data.email} | 解决拼图失败: 答案不正确 | 重试中..."
                 )
 
             except SessionRateLimited:
@@ -45,10 +48,15 @@ class Bot(DawnExtensionAPI):
 
             except Exception as e:
                 logger.error(
-                    f"Account: {self.account_data.email} | Error occurred while solving captcha: {str(e)} | Retrying..."
+                    f"账户: {self.account_data.email} | 解决验证码时发生错误: {str(e)} | 重试中..."
                 )
 
-        raise CaptchaSolvingFailed("Failed to solve captcha after 5 attempts")
+            retry_count += 1
+            logger.info(f"账户: {self.account_data.email} | 等待 {wait_time} 秒后进行第 {retry_count} 次重试")
+            await asyncio.sleep(wait_time)
+            wait_time *= 2  # 等待时间翻倍
+
+        raise CaptchaSolvingFailed("5次尝试后仍未能解决验证码")
 
     async def clear_account_and_session(self) -> None:
         if "error" in self.session.headers and self.session.headers["error"] == True:
@@ -268,10 +276,11 @@ class Bot(DawnExtensionAPI):
 
     async def login_new_account(self):
         task_id = None
-        
-        if "error" in self.session.headers and self.session.headers["error"] == True:
-                logger.error(f'Account: {self.account_data.email} | self.session.headers:{self.session.headers} not login')
-                return False
+        await Accounts.increment_login_attempts(email=self.account_data.email)
+
+        if await Accounts.get_registered_status(email=self.account_data.email):
+            logger.error(f'{self.account_data.email} 用户没有注册')
+            return False
 
         try:
             await Accounts.create_account(
@@ -311,19 +320,17 @@ class Bot(DawnExtensionAPI):
         except CaptchaSolvingFailed:
             sleep_until = self.get_sleep_until()
             await Accounts.set_sleep_until(self.account_data.email, sleep_until)
+
             logger.error(
                 f"Account: {self.account_data.email} | 验证码解决失败,尝试次数 {self.login_attempts}/10"
             )
             return False
         except Exception as error:
             error_message = str(error)
-
-            if "Session is rate limited" not in error_message:
-                await Accounts.create_account(
-                    email=self.account_data.email, headers={"error": True}
-                )
             
-            if "Email not verified" in error_message:
+            if "Email not verified" in error_message  or "user not found" in error_message:
+                await Accounts.set_registered_status(email=self.account_data.email, status=False)
+
                 logger.error(
                     f"Account: {self.account_data.email} | 登录失败: 邮箱未验证,请检查垃圾邮件文件夹"
                 )
@@ -332,6 +339,11 @@ class Bot(DawnExtensionAPI):
                 f"Account: {self.account_data.email} | 登录失败: {error_message}, 尝试次数 {self.login_attempts}/10"
             )
             return False
+        finally:
+            wait_time = await Accounts.get_wait_time_by_login_attempts(email=self.account_data.email)
+            if wait_time > 0:
+                logger.info(f"账户: {self.account_data.email} | 需要等待 {wait_time} 秒")
+                await asyncio.sleep(wait_time)
 
     async def handle_existing_account(self, db_account_data) -> bool:
         if db_account_data.sleep_until and await self.handle_sleep(
