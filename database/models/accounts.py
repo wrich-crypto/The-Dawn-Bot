@@ -10,7 +10,7 @@ class Accounts(Model):
     headers = fields.JSONField(null=True)
     sleep_until = fields.DatetimeField(null=True)
     session_blocked_until = fields.DatetimeField(null=True)
-    registered = fields.BooleanField(default=False)
+    registered = fields.BooleanField(default=True)
     login_attempts = fields.IntField(default=0)
 
     class Meta:
