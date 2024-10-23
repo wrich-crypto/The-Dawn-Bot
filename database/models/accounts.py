@@ -87,10 +87,13 @@ class Accounts(Model):
 
     @classmethod
     async def get_registered_status(cls, email: str):
-        account = await cls.get_account(email=email)
-        if account is None:
-            return True
-        return account.registered
+        try:
+            account = await cls.get_account(email=email)
+            if account is None:
+                return True
+            return account.registered
+        except Exception as e:
+            logger.error(f"get_registered_status error:{e}")
 
     @classmethod
     async def set_registered_status(cls, email: str, status: bool):
