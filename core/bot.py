@@ -314,9 +314,10 @@ class Bot(DawnExtensionAPI):
         except Exception as error:
             error_message = str(error)
 
-            await Accounts.create_account(
-                email=self.account_data.email, headers={"error": True}
-            )
+            if "Session is rate limited" not in error_message:
+                await Accounts.create_account(
+                    email=self.account_data.email, headers={"error": True}
+                )
             
             if "Email not verified" in error_message:
                 logger.error(
