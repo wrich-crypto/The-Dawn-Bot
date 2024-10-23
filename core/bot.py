@@ -278,6 +278,10 @@ class Bot(DawnExtensionAPI):
         if await Accounts.get_registered_status(email=self.account_data.email) is False:
             logger.error(f'{self.account_data.email} 用户没有注册')
             return False
+        
+        if await Accounts.get_login_attempts(email=self.account_data.email) > 3:
+            logger.error(f'{self.account_data.email} 用户登录次数过多')
+            return False
 
         try:
             await Accounts.create_account(
