@@ -1,6 +1,7 @@
 import os
 from loguru import logger
 from tortoise import Tortoise
+from tortoise.exceptions import OperationalError
 
 # 获取项目根目录
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,7 +16,7 @@ async def initialize_database() -> None:
 
         # 使用绝对路径初始化数据库
         db_url = f"sqlite://{DB_PATH}"
-        logger.info(f"Initializing database at: {db_url}")
+        logger.info(f"正在初始化数据库：{db_url}")
 
         await Tortoise.init(
             db_url=db_url,
@@ -23,14 +24,33 @@ async def initialize_database() -> None:
             timezone="UTC",
         )
 
-        # 生成数据库架构
-        await Tortoise.generate_schemas(safe=True)
+        # 检查并更新数据库架构
+        await check_and_update_schema()
 
-        logger.info("Database initialized successfully")
+        logger.info("数据库初始化成功")
 
     except Exception as error:
-        logger.error(f"Error while initializing database: {error}")
+        logger.error(f"初始化数据库时出错：{error}")
         raise  # 抛出异常，让调用者处理
+
+async def check_and_update_schema():
+    try:
+        # 尝试生成架构，如果表已存在则不会进行更改
+        await Tortoise.generate_schemas(safe=True)
+        
+        # 检查现有表的结构并进行必要的更新
+        from tortoise import Model
+        for model in Tortoise.apps.get('models').values():
+            if issubclass(model, Model):
+                await model.describe_model()
+                await model.update_forward_refs()
+        
+        logger.info("数据库架构检查和更新完成")
+    except OperationalError as e:
+        logger.warning(f"更新数据库架构时出现问题：{e}")
+        logger.info("正在尝试重新创建数据库架构...")
+        await Tortoise.generate_schemas(safe=False)
+        logger.info("数据库架构重新创建完成")
 
 # 可选：添加一个关闭数据库连接的函数
 async def close_database():
