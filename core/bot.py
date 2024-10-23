@@ -18,7 +18,7 @@ class Bot(DawnExtensionAPI):
 
     async def get_captcha_data(self) -> Tuple[str, Any, Optional[Any]]:
         retry_count = 0
-        wait_time = 1  # 初始等待时间为1秒
+        wait_time = 10  # 初始等待时间为1秒
 
         while retry_count < 5:
             try:
