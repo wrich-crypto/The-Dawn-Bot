@@ -38,13 +38,6 @@ async def check_and_update_schema():
         # 尝试生成架构，如果表已存在则不会进行更改
         await Tortoise.generate_schemas(safe=True)
         
-        # 检查现有表的结构并进行必要的更新
-        from tortoise import Model
-        for model in Tortoise.apps.get('models').values():
-            if issubclass(model, Model):
-                await model.describe_model()
-                await model.update_forward_refs()
-        
         logger.info("数据库架构检查和更新完成")
     except OperationalError as e:
         logger.warning(f"更新数据库架构时出现问题：{e}")
